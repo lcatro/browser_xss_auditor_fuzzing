@@ -1,0 +1,178 @@
+
+<html>
+
+    <script>
+    
+        elements = ['CANVAS','ARTICLE','ASISE','B','BDI','BDO','BLOCKQUOTE','BR','BUTTON','CANVAS','CAPTION','CITE','COL','CODE','COMMAND','DATALIST','DD','DEL','DETAILS','DFN','DL','DT','EM','STYLE','FIELDSET','FIGCAPTION','SCRIPT','EMBED','FIGURE','FOOTER','HEADER','HGROUP','HR','I','INPUT','INS','KEYGEN','KBD','LEGEND','MARK','MENU','METER','NAV','NOSCRIPT','OPTGROUP','OUTPUT','P','PARAM','PRE','PROGRESS','Q','RP','RT','RUBY','S','SAMP','SECTION','SELECT','SMALL','SOURCE','SPAN','SUP','TH','THEAD','TIME','OBJECT','IFRAME','TEXTAREA','TRACK','U','VAR','WBR','FORM','A','BODY','HTML','DIV','TABLE','AREA','TD','TR','LINK','BASE','FONT','HEAD','IMG','MAP','META','OL','LI','TBODY','TITLE','H1','BLINK','!DOCTYPE','AREA','COL','SPAN','FRAMESET','FRAME','UL','OPTION','NOFRAMES','TFOOT','XMP','ISINDEX','CENTER','HR','LABEL','OPTGROUP','AUDIO','VIDEO','SVG']
+        
+        MAX_MIX_ELEMENT=5;
+        MAX_MIX_CHAR=3;
+        
+        var num=new Array("1","2","3","4","5","6","7","8","9","0");
+        var chars =new Array("a","b","c","d","e","f");
+        var specialchars = new Array(".","..","&","!","x0B","x00","@","?","#",":","/");
+
+        function random_range(range) {
+            return parseInt(Math.random()*range);
+        }
+
+        function random_boolean() {
+            return random_range(2)?true:false;
+        }
+        
+        function random_element() {
+            if (random_boolean())
+                return '<'+elements[random_range(elements.length)]+'>';
+            
+            return '<'+elements[random_range(elements.length)]+'/>';
+        }
+
+        function make_random_bit() {
+            var make_bit='';
+
+            switch (random_range(3)) {
+                case 0 :
+                    make_bit='%';
+
+                    if (random_boolean())
+                        make_bit+=num[random_range(num.length)];
+                    else
+                        make_bit+=chars[random_range(chars.length)];
+
+                    if (random_boolean()) {
+                        if (random_boolean())
+                            make_bit+=num[random_range(num.length)];
+                        else
+                            make_bit+=chars[random_range(chars.length)];
+                    }
+                    break;
+                case 1 :
+                    make_bit='%u';
+
+                    if (random_boolean())
+                        make_bit+=num[random_range(num.length)];
+                    else
+                        make_bit+=chars[random_range(chars.length)];
+                    if (random_boolean())
+                        make_bit+=num[random_range(num.length)];
+                    else
+                        make_bit+=chars[random_range(chars.length)];
+
+                    if (random_boolean())
+                        make_bit+=num[random_range(num.length)];
+                    else
+                        make_bit+=chars[random_range(chars.length)];
+                    if (random_boolean())
+                        make_bit+=num[random_range(num.length)];
+                    else
+                        make_bit+=chars[random_range(chars.length)];
+
+                    make_bit=unescape(make_bit);
+                    break;
+                case 2 :
+                    make_bit=specialchars[random_range(specialchars.length)];
+            }
+            return make_bit;
+        }
+
+        function make_random_insert_url_paramter_string() {
+            var output_insert_string='';
+            var random_insert_char_count=random_range(MAX_MIX_CHAR)+1;
+
+            for (var make_char_index=0;make_char_index<random_insert_char_count;++make_char_index)
+                output_insert_string+=make_random_bit();
+            
+            return output_insert_string;
+        }
+        
+        function make_reflected_xss_in_dom_element() {
+            var make_payload='';
+            var script_element_bypass_xss_auditor_code='<script>check_xss_bypass_state=true;<\/script>';
+            
+            for (var make_index=0;make_index<MAX_MIX_ELEMENT;++make_index) {
+                make_payload+=random_element();
+                
+                if (random_boolean())
+                    make_payload+=make_random_bit();
+            }
+            
+            return make_payload+script_element_bypass_xss_auditor_code;
+        }
+        
+        function make_reflected_xss_in_element_attribute_element() {
+            var make_payload='';
+            var element_event_bypass_xss_auditor_code=[
+                '<img src="" onerror="check_xss_bypass_state=true;" />',
+                '<img src="" onload="check_xss_bypass_state=true;" />'
+            ];
+            
+            for (var make_index=0;make_index<MAX_MIX_ELEMENT;++make_index) {
+                make_payload+=random_element();
+                
+                if (random_boolean())
+                    make_payload+=make_random_bit();
+            }
+            
+            return make_payload+element_event_bypass_xss_auditor_code[random_range(element_event_bypass_xss_auditor_code.length)];
+        }
+        
+        function fuzzing_xss_auditor_bypass() {
+            var sub_iframe_url='browser_xss_auditor_fuzzing_sub_iframe.php?';
+            
+            if (random_boolean())
+                sub_iframe_url+='reflect_xss_in_dom='+make_reflected_xss_in_dom_element();
+            else
+                sub_iframe_url+='reflect_xss_in_element_attribute='+make_reflected_xss_in_dom_element();
+            
+            var sub_iframe_envirment=document.getElementById('sub_iframe_xss_auditor_fuzzing_envirment');
+            var new_xss_auditor_iframe=document.createElement('iframe');
+            
+            new_xss_auditor_iframe.src=sub_iframe_url;
+            new_xss_auditor_iframe.style.display='none';
+            
+            sub_iframe_envirment.appendChild(new_xss_auditor_iframe);
+        }
+        
+        function log_result(bypass_url) {
+            var output_window=document.getElementById('output_window');
+            
+            output_window.innerHTML+='<font color="red">'+bypass_url+'</font><br/>';
+        }
+        
+        function log_detail(message) {
+            var output_window=document.getElementById('output_window');
+            
+            output_window.innerHTML+=message.url+'  '+message.state+'<br/>';
+        }
+        
+        function sub_browser_envirment_fuzzing_state_recall(fuzzing_message) {
+            var fuzzing_result=fuzzing_message.data;
+
+            console.log(fuzzing_result.url+' - '+fuzzing_result.state);  //  <-  debug in desktop browser ..
+            //  log_detail(fuzzing_result);  //  <-  debug in mobile browser ..
+            
+            if (fuzzing_result.state)
+                log_result(fuzzing_result.url);
+            
+            var sub_iframe_envirment=document.getElementById('sub_iframe_xss_auditor_fuzzing_envirment');
+            sub_iframe_envirment.innerHTML='';
+            
+            fuzzing_xss_auditor_bypass();
+        }
+        
+        window.onmessage=sub_browser_envirment_fuzzing_state_recall;
+        
+    </script>
+
+    <body onload="fuzzing_xss_auditor_bypass()">
+        
+        Fuzzing result report :
+        <div id="output_window">
+        
+        </div>
+        <div id="sub_iframe_xss_auditor_fuzzing_envirment">
+        </div>
+        
+    </body>
+
+</html>
